@@ -7,6 +7,7 @@ object BotMain {
 
   def main(args: Array[String]): Unit = {
     val api = new JDABuilder(AccountType.BOT).setToken(System.getenv("BOT_TOKEN")).buildAsync
+    println(api.getSelfUser.getName)
   }
 
 }
