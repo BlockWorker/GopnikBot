@@ -12,6 +12,13 @@ ScalaCompileOptions.metaClass.useCompileDaemon = false
 
 mainClassName = 'com.blockworker.gopnik.BotMain'
 
+task copyToLib(type: Copy) {
+    into "$buildDir/lib"
+    from configurations.compile
+}
+
+shadowJar.dependsOn copyToLib
+
 repositories {
     jcenter()
 }

@@ -1,1 +1,1 @@
-bot: java $JAVA_OPTS -jar build/libs/GopnikBot-all.jar
+web: java $JAVA_OPTS -jar build/libs/GopnikBot-all.jar
