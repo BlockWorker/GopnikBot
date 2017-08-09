@@ -1,13 +1,15 @@
 package com.blockworker.gopnik
 
-import net.dv8tion.jda.core.AccountType
-import net.dv8tion.jda.core.JDABuilder
+import net.dv8tion.jda.core._
 
 object BotMain {
 
+  private var api: JDA = _
+  def getAPI = api
+
   def main(args: Array[String]): Unit = {
-    val api = new JDABuilder(AccountType.BOT).setToken(System.getenv("BOT_TOKEN")).buildAsync
-    println(api.getSelfUser.getName)
+    api = new JDABuilder(AccountType.BOT).setToken(System.getenv("BOT_TOKEN")).buildAsync
+    api.addEventListener(TestListener)
   }
 
 }
