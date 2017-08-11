@@ -1,1 +1,1 @@
-web: java $JAVA_OPTS -jar build/libs/GopnikBot.jar
+bot: java $JAVA_OPTS -XX:+UseConcMarkSweepGC -jar build/libs/GopnikBot.jar
