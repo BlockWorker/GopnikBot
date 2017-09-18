@@ -8,7 +8,7 @@ import net.dv8tion.jda.core.hooks.ListenerAdapter
 
 object EventListener extends ListenerAdapter {
 
-  val AN_NAME = "alex_6611"
+  val AN_NAME = "Malais"
 
   var prefix = '!'
 
