@@ -3,6 +3,7 @@ package com.blockworker.gopnik
 import java.io._
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.{Executors, TimeUnit}
 
 import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter
 import net.dv8tion.jda.core.entities.{Member, MessageChannel, VoiceChannel}
@@ -19,6 +20,7 @@ import scala.util.Random
 object VoiceManager extends AudioEventAdapter {
 
   val GOPNIK_LIST = """https://www.youtube.com/playlist?list=PLAVlHb0DKf53tfdakIAS9-aT_XOcl_yrK"""
+  val AN_HYMN = """https://www.youtube.com/watch?v=vN-ARytZKgQ"""
 
   var channel: VoiceChannel = _
   var audioManager: AudioManager = _
@@ -27,6 +29,13 @@ object VoiceManager extends AudioEventAdapter {
   var player: AudioPlayer = _
   var autoChannel: MessageChannel = _
   var sendHandler: AudioPlayerSendHandler = _
+
+  var anVolume = 100
+  var anPlayer: AudioPlayer = _
+  var anSendHandler: AudioPlayerSendHandler = _
+  var anPlaying = false
+  var anTrack: AudioTrack = _
+  val anEndScheduler = Executors.newScheduledThreadPool(1)
 
   var playlist = mutable.Seq[AudioTrack]()
   var trackIndex = 0
@@ -59,6 +68,81 @@ object VoiceManager extends AudioEventAdapter {
       writer.flush()
       writer.close()
     }
+  }
+
+  val anLoadHandler = new AudioLoadResultHandler {
+    override def loadFailed(exception: FriendlyException): Unit = {}
+
+    override def playlistLoaded(playlist: AudioPlaylist): Unit = {}
+
+    override def noMatches(): Unit = {}
+
+    override def trackLoaded(track: AudioTrack): Unit = anTrack = track
+  }
+
+  playerManager.loadItem(AN_HYMN, anLoadHandler)
+
+  def printAnVolume(tChannel: MessageChannel): Unit =
+    tChannel.sendMessage(":wrench: :loud_sound: An's Hymn volume: " + anVolume).queue()
+
+  def setAnVolume(volume: String, tChannel: MessageChannel): Unit = {
+    var vol = 0
+    try {
+      vol = Integer.parseInt(volume)
+    } catch {
+      case _: NumberFormatException =>
+        tChannel.sendMessage(":musical_note: :rage: That's not a valid number!").queue()
+        return
+    }
+    anVolume = math.min(150, math.max(0, vol))
+    tChannel.sendMessage(":wrench: :loud_sound: An's Hymn volume set to " + anVolume).queue()
+  }
+
+  def anJoin(anChannel: VoiceChannel): Unit = {
+    anPlaying = true
+    audioManager = BotMain.getServer.getAudioManager
+    if (channel == anChannel) {
+      autoChannel.sendMessage(":musical_note: **PRAISE SCHLANGENLECKER**").queue()
+      player.setPaused(true)
+      audioManager.setSendingHandler(null)
+    } else if (channel != null) {
+      autoChannel.sendMessage(":musical_note: :pause_button: One second, gotta **PRAISE SCHLANGENLECKER**...").queue()
+      player.setPaused(true)
+      audioManager.setSendingHandler(null)
+      audioManager.closeAudioConnection()
+      audioManager.openAudioConnection(anChannel)
+    } else {
+      audioManager.openAudioConnection(anChannel)
+    }
+    anPlayer = playerManager.createPlayer()
+    anPlayer.setVolume(anVolume)
+    anSendHandler = new AudioPlayerSendHandler(anPlayer)
+    audioManager.setSendingHandler(anSendHandler)
+    anTrack = anTrack.makeClone()
+    anPlayer.playTrack(anTrack)
+    anEndScheduler.schedule(new Runnable {
+      override def run(): Unit = {
+        anPlayer.stopTrack()
+        anSendHandler = null
+        audioManager.setSendingHandler(null)
+        anPlayer.destroy()
+        anPlayer = null
+        if (channel == anChannel) {
+          autoChannel.sendMessage(":musical_note: :arrow_forward: OK, back to hardbass now...").queue()
+          audioManager.setSendingHandler(sendHandler)
+          player.setPaused(false)
+        } else if (channel != null) {
+          autoChannel.sendMessage(":musical_note: :arrow_forward: OK, back to hardbass now...").queue()
+          audioManager.closeAudioConnection()
+          audioManager.openAudioConnection(channel)
+          audioManager.setSendingHandler(sendHandler)
+          player.setPaused(false)
+        } else {
+          audioManager.closeAudioConnection()
+        }
+        anPlaying = false
+      }
+    }, 33, TimeUnit.SECONDS)
   }
 
   def join(member: Member, tChannel: MessageChannel): Unit = {
@@ -400,9 +484,9 @@ object VoiceManager extends AudioEventAdapter {
       return
     }
     tChannel.sendMessage(":musical_note: I'm outta here!").queue()
+    player.stopTrack()
     sendHandler = null
     audioManager.setSendingHandler(null)
-    player.stopTrack()
     player.destroy()
     player = null
     audioManager.closeAudioConnection()
