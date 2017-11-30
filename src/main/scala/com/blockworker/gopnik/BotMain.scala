@@ -28,7 +28,6 @@ object BotMain {
       val reader = new FileReader(configFile)
       EventListener.prefix = reader.read().toChar
       VoiceManager.defaultVolume = reader.read()
-      VoiceManager.anVolume = reader.read()
       reader.close()
     }
     adminRole = server.getRolesByName(adminRoleName, false).get(0)
@@ -46,10 +45,8 @@ object BotMain {
     val writer = new FileWriter(configFile)
     writer.write(EventListener.prefix)
     writer.write(VoiceManager.defaultVolume)
-    writer.write(VoiceManager.anVolume)
     writer.flush()
     writer.close()
-    VoiceManager.anEndScheduler.shutdownNow()
     channel.sendMessage(":wave: Gopnik out, блядь!").queue()
     api.shutdown()
   }

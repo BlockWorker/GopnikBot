@@ -24,7 +24,7 @@ shadowJar {
 
 dependencies {
     compile 'org.scala-lang:scala-library:2.12.3'
-    compile 'net.dv8tion:JDA:3.2.0_242'
+    compile 'net.dv8tion:JDA:3.3.1_307'
     compile 'com.sedmelluq:lavaplayer:1.2.42'
 }
 
