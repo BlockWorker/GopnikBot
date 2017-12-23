@@ -410,5 +410,6 @@ object VoiceManager extends AudioEventAdapter {
     channel = null
     autoChannel = null
     playlist = mutable.Seq[AudioTrack]()
+    EventListener.locked = false
   }
 }
