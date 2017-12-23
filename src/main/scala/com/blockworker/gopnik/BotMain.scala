@@ -26,7 +26,7 @@ object BotMain {
     server = api.getGuilds.get(0)
     if (configFile.exists()) {
       val reader = new FileReader(configFile)
-      EventListener.prefix = reader.read().toChar
+      //EventListener.prefix = reader.read().toChar
       VoiceManager.defaultVolume = reader.read()
       reader.close()
     }
