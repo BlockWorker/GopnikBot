@@ -21,7 +21,7 @@ object BotMain {
   private var modRole: Role = _
 
   def main(args: Array[String]): Unit = {
-    api = new JDABuilder(AccountType.BOT).setToken(System.getenv("BOT_TOKEN " + args(0))).buildBlocking()
+    api = new JDABuilder(AccountType.BOT).setToken(System.getenv("BOT_TOKEN")).buildBlocking()
     api.addEventListener(EventListener)
     server = api.getGuilds.get(0)
     if (configFile.exists()) {
