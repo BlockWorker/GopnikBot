@@ -9,7 +9,7 @@ object EventListener extends ListenerAdapter {
 
   val ALLOWED_CHANNELS = Array[String]("admin", "commands")
 
-  var prefix = '!'
+  var prefix = System.getenv("PREFIX")(0)
   var locked = false
 
   override def onMessageReceived(event: MessageReceivedEvent): Unit = {
