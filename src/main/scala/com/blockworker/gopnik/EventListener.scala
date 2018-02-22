@@ -15,7 +15,7 @@ object EventListener extends ListenerAdapter {
   override def onMessageReceived(event: MessageReceivedEvent): Unit = {
     if (event.getAuthor.isBot) return
     val member = event.getMember
-    val content = event.getMessage.getRawContent
+    val content = event.getMessage.getContentRaw
     val channel = event.getChannel
     if (content(0) != prefix) return
     if (!ALLOWED_CHANNELS.contains(channel.getName)) {

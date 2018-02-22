@@ -380,19 +380,20 @@ object VoiceManager extends AudioEventAdapter {
   }
 
   override def onTrackStuck(player: AudioPlayer, track: AudioTrack, thresholdMs: Long): Unit = {
-    autoChannel.sendMessage(":musical_note: :rage: Hardbass is broken, playing next track...").queue()
+    autoChannel.sendMessage(":musical_note: :rage: Hardbass is broken, playing next track... (Stuck)").queue()
     nextTrack(autoChannel)
   }
 
   override def onTrackException(player: AudioPlayer, track: AudioTrack, exception: FriendlyException): Unit = {
     autoChannel.sendMessage(":musical_note: :rage: Hardbass is broken, playing next track...").queue()
-    nextTrack(autoChannel)
     val excfile = new File("trackexc-" + ZonedDateTime.now().format(DateTimeFormatter.ISO_DATE_TIME))
     excfile.createNewFile()
     val writer = new PrintWriter(new BufferedWriter(new FileWriter(excfile)))
     exception.printStackTrace(writer)
+    exception.printStackTrace()
     writer.flush()
     writer.close()
+    nextTrack(autoChannel)
   }
 
   def disconnect(tChannel: MessageChannel): Unit = {
