@@ -1,32 +1,56 @@
 package com.blockworker.gopnik
 
 
-import net.dv8tion.jda.core.entities.{MessageChannel, PrivateChannel, Member}
+import com.blockworker.gopnik.messagehandlers._
+import com.blockworker.gopnik.music.{PlaylistManager, VoiceHandler}
+import net.dv8tion.jda.core.MessageBuilder
+import net.dv8tion.jda.core.entities.{Message, MessageChannel}
+import net.dv8tion.jda.core.events.guild.voice.{GuildVoiceLeaveEvent, GuildVoiceMoveEvent}
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent
 import net.dv8tion.jda.core.hooks.ListenerAdapter
 
+import scala.collection.mutable
+
 object EventListener extends ListenerAdapter {
 
-  val ALLOWED_CHANNELS = Array[String]("admin", "commands")
+  val ALLOWED_CHANNELS = Array[String]("admin", System.getenv("CHANNEL"))
 
   var prefix = System.getenv("PREFIX")(0)
-  var locked = false
+  var locked = true //TODO: temp true
+
+  private val messageHandlers = mutable.Set[IMessageHandler]()
+
+  def init(): Unit = {
+    messageHandlers.add(CoreMessageHandler)
+    messageHandlers.add(MusicMessageHandler)
+  }
 
   override def onMessageReceived(event: MessageReceivedEvent): Unit = {
     if (event.getAuthor.isBot) return
-    val member = event.getMember
-    val content = event.getMessage.getContentRaw
     val channel = event.getChannel
-    if (content(0) != prefix) return
+    val message = event.getMessage
+    if (message.getContentRaw()(0) != prefix) return
     if (!ALLOWED_CHANNELS.contains(channel.getName)) {
-      channel.sendMessage(":x: Please use one the #commands channel to command the bot!").queue()
+      val chan = BotMain.getServer.getTextChannelsByName(System.getenv("CHANNEL"), true).get(0)
+      message.delete().queue()
+      event.getAuthor.openPrivateChannel().queue(chan =>
+        chan.sendMessage(new MessageBuilder().append("Please use the ").append(chan).append(" channel to command this bot!").build()).queue())
       return
     }
-    if (locked && !BotMain.isAdmin(member)) {
-      channel.sendMessage(":lock: The bot is currently locked!").queue()
+    if (locked && !BotMain.isAdmin(event.getMember)) {
+      message.addReaction("❌").queue()
+      message.addReaction("\uD83D\uDD12").queue() //closed lock
+      PlaylistManager.statusToFront()
       return
     }
-    val args = content.substring(1).split(" ")
+    var handled = false
+    val iter = messageHandlers.iterator
+    while (!handled && iter.hasNext) { //try every MessageHandler until one of them processes it
+      handled = iter.next().handleCommand(event)
+    }
+    if (!handled) message.addReaction("❓").queue() //if prefix exists but command is not handled
+    PlaylistManager.statusToFront()
+    /*val args = content.substring(1).split(" ")
     args(0).toLowerCase() match {
       case "help" => sendHelp(member, channel)
       case "ping" =>
@@ -81,54 +105,17 @@ object EventListener extends ListenerAdapter {
         if (locked) channel.sendMessage(":lock: Bot has been locked!").queue()
         else channel.sendMessage(":unlock: Bot has been unlocked!").queue()
       case _ =>
-    }
+    }*/
   }
 
-  def wrongSyntax(channel: MessageChannel): Unit = channel.sendMessage(":rage: Wrong use of ~~meme~~ command!").queue()
+  def wrongSyntax(message: Message): Unit = message.addReaction("❓").queue()
 
-  def concatArgs(args: Array[String], start: Int): String = {
-    var str = args(start)
-    for (i <- start + 1 until args.length) str += " " + args(i)
-    str
+  override def onGuildVoiceLeave(event: GuildVoiceLeaveEvent) = {
+    if (event.getChannelLeft == VoiceHandler.getChannel) PlaylistManager.checkDisconnect()
   }
 
-  def sendHelp(member: Member, channel: MessageChannel): Unit = {
-    var str = "**Gopnik Bot v0.2** by alex_6611\n" +
-      "__Prefix:__ `" + prefix + "`\n" +
-      "__Commands:__\n" +
-      "```ping - Test command to check whether the bot is responding\n" +
-      "join - Invites the bot to your voice channel to play music\n" +
-      "rebind - Binds the music status output to the current channel\n" +
-      "queue <link> - Adds one or multiple tracks to the playlist\n" +
-      "queue gopnik - Adds the official Gopnik List(tm) to the playlist\n" +
-      "playlist - Shows the current playlist\n" +
-      "play - Starts playing from the beginning\n" +
-      "play <number> - Starts playing the specified track\n" +
-      "noloop - Tells the bot to stop playing after the last track\n" +
-      "shuffle - Tells the bot to loop and shuffle the playlist after the last track\n" +
-      "loop - Tells the bot to loop the playlist after the last track\n" +
-      "next - Skips the current track and plays the next one\n" +
-      "pause - Pauses the music\n" +
-      "resume - Resumes the music when paused or stopped\n" +
-      "stop - Stops the music\n" +
-      "remove - Removes the current track from the playlist and skips to the next one\n" +
-      "clearplaylist - Stops the music and clears the playlist\n" +
-      "save <name> - Saves the current playlist as <name>\n" +
-      "load <name> - Loads playlist <name>, only works if current playlist is empty\n" +
-      "volume - Shows current volume level\n" +
-      "volume <number> - Sets volume to <number> (0-150)\n" +
-      "disconnect - Disconnects the bot from its voice channel```"
-    if (BotMain.isMod(member)) str += "\n__Pro Commands:__\n" +
-      "```forcesave <name> - Saves the current playlist as <name>, even if that name already exists\n" +
-      "delete <name> - Deletes playlist <name>\n" +
-      "defaultvolume - Shows default volume level\n" +
-      "defaultvolume <number> - Sets default volume to <number> (0-150)```"
-    if (BotMain.isAdmin(member)) str += "\n__Admin Commands:__\n" +
-      "```shutdown - Shuts the Bot down\n" +
-      "prefix <char> - Changes the command prefix to <char>\n" +
-      "lock - Locks or unlocks the bot for non-admins```"
-    member.getUser.openPrivateChannel().queue((t: PrivateChannel) => t.sendMessage(str).queue())
-    channel.sendMessage(":question: Help sent, check your private messages!").queue()
+  override def onGuildVoiceMove(event: GuildVoiceMoveEvent) = {
+    if (event.getChannelLeft == VoiceHandler.getChannel) PlaylistManager.checkDisconnect()
   }
 
 }
