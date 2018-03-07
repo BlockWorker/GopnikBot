@@ -50,7 +50,7 @@ object VoiceHandler extends AudioEventAdapter {
       case _: InsufficientPermissionException =>
         channel = null
         return ConnectNoPermissions
-      case _ =>
+      case _: Throwable =>
         channel = null
         return ConnectOtherError
     }
@@ -81,9 +81,9 @@ object VoiceHandler extends AudioEventAdapter {
     player = null
     audioManager.closeAudioConnection()
     channel = null
-    textChannel = null
     EventListener.locked = false
     PlaylistManager.onDisconnect()
+    textChannel = null
     true
   }
 

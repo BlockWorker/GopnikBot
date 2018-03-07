@@ -10,15 +10,7 @@ class AudioPlayerSendHandler(val audioPlayer: AudioPlayer) extends AudioSendHand
 
   override def canProvide: Boolean = {
     lastFrame = audioPlayer.provide()
-    if (lastFrame != null) {
-      counter += 1
-      if (counter % 25 == 0) {
-        counter = 0
-        PlaylistManager.updateTrackInfo()
-      }
-      true
-    }
-    else false
+    lastFrame != null
   }
 
   override def provide20MsAudio: Array[Byte] = lastFrame.data

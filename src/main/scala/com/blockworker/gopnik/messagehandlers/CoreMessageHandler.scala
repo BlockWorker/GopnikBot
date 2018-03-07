@@ -40,37 +40,40 @@ object CoreMessageHandler extends IMessageHandler {
     var str = "**Gopnik Bot v0.2** by alex_6611\n" +
       "__Prefix:__ `" + EventListener.prefix + "`\n" +
       "__Commands:__\n" +
-      "```ping - Test command to check whether the bot is responding\n" +
+      "```ping - Returns the ping of the bot. (sometimes broken)\n" +
       "join - Invites the bot to your voice channel to play music\n" +
-      "rebind - Binds the music status output to the current channel\n" +
       "queue <link> - Adds one or multiple tracks to the playlist\n" +
-      "queue gopnik - Adds the official Gopnik List(tm) to the playlist\n" +
+      "queue gopnik - Adds the official Gopnik List™ to the playlist\n" +
       "playlist - Shows the current playlist\n" +
       "play - Starts playing from the beginning\n" +
       "play <number> - Starts playing the specified track\n" +
+      "play <link> - Like queue, but immediately starts playing queued track(s)\n" +
+      "play gopnik - Queues and plays the official Gopnik List™\n" +
       "noloop - Tells the bot to stop playing after the last track\n" +
-      "shuffle - Tells the bot to loop and shuffle the playlist after the last track\n" +
       "loop - Tells the bot to loop the playlist after the last track\n" +
+      "shuffle - Tells the bot to loop and shuffle the playlist after the last track\n" +
+      "goto <time> - Skips to <time> in the track if possible (seconds, m:s or h:m:s)\n" +
       "next - Skips the current track and plays the next one\n" +
       "pause - Pauses the music\n" +
       "resume - Resumes the music when paused or stopped\n" +
       "stop - Stops the music\n" +
       "remove - Removes the current track from the playlist and skips to the next one\n" +
+      "remove <number> - Removes the specified track from the playlist\n" +
+      "remove <num-num> - Removes all tracks in the specified range from the playlist\n" +
       "clearplaylist - Stops the music and clears the playlist\n" +
-      "save <name> - Saves the current playlist as <name>\n" +
-      "load <name> - Loads playlist <name>, only works if current playlist is empty\n" +
-      "volume - Shows current volume level\n" +
       "volume <number> - Sets volume to <number> (0-150)\n" +
       "disconnect - Disconnects the bot from its voice channel```"
-    if (BotMain.isMod(member)) str += "\n__Pro Commands:__\n" +
-      "```forcesave <name> - Saves the current playlist as <name>, even if that name already exists\n" +
-      "delete <name> - Deletes playlist <name>\n" +
-      "defaultvolume - Shows default volume level\n" +
-      "defaultvolume <number> - Sets default volume to <number> (0-150)```"
     if (BotMain.isAdmin(member)) str += "\n__Admin Commands:__\n" +
       "```shutdown - Shuts the Bot down\n" +
-      "prefix <char> - Changes the command prefix to <char>\n" +
       "lock - Locks or unlocks the bot for non-admins```"
+    str += "\n__Possible responses:__\n" +
+      ":white_check_mark: / :x: - General success / fail\n" +
+      ":question: - Unknown command or wrong syntax\n" +
+      ":interrobang: - Internal error, try again or ask hackerman\n" +
+      ":white_check_mark: :mag_right: - Found track with auto-search\n" +
+      ":grey_question: - No tracks found\n" +
+      ":hourglass_flowing_sand: - Bot busy, try again in a few seconds\n" +
+      ":lock: - Bot is locked"
     member.getUser.openPrivateChannel().queue((t: PrivateChannel) => t.sendMessage(str).queue())
   }
 

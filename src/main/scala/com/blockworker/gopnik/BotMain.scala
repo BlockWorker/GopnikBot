@@ -2,6 +2,7 @@ package com.blockworker.gopnik
 
 //import java.io.{File, FileReader, FileWriter}
 
+import com.blockworker.gopnik.music.VoiceHandler
 import net.dv8tion.jda.core._
 import net.dv8tion.jda.core.entities._
 
@@ -28,6 +29,7 @@ object BotMain {
     EventListener.init()
     api.addEventListener(EventListener)
     server = api.getGuilds.get(0)
+    VoiceHandler.init()
     /*if (configFile.exists()) {
       val reader = new FileReader(configFile)
       VoiceManager.defaultVolume = reader.read()
@@ -49,6 +51,7 @@ object BotMain {
     writer.write(VoiceManager.defaultVolume)
     writer.flush()
     writer.close()*/
+    VoiceHandler.disconnect()
     channel.sendMessage(":wave: Gopnik out, блядь!").queue()
     api.shutdown()
   }

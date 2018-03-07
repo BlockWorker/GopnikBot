@@ -13,13 +13,11 @@ object DefaultLoadHandler extends AudioLoadResultHandler {
     PlaylistManager.playlist += track
     val index = PlaylistManager.playlist.indices.last - 1
     PlaylistManager.addRequest.addReaction("✅").queue()
-    PlaylistManager.currentIdent = ""
-    PlaylistManager.addRequest = null
     if (PlaylistManager.playOnFind){
       PlaylistManager.curIndex = index
       PlaylistManager.startNextTrack()
-      PlaylistManager.playOnFind = false
     }
+    afterLoad()
   }
 
   override def playlistLoaded(playlist: AudioPlaylist) = {
@@ -32,13 +30,11 @@ object DefaultLoadHandler extends AudioLoadResultHandler {
       index = PlaylistManager.playlist.length - playlist.getTracks.size() - 2
     }
     PlaylistManager.addRequest.addReaction("✅").queue()
-    PlaylistManager.currentIdent = ""
-    PlaylistManager.addRequest = null
     if (PlaylistManager.playOnFind){
       PlaylistManager.curIndex = index
       PlaylistManager.startNextTrack()
-      PlaylistManager.playOnFind = false
     }
+    afterLoad()
   }
 
   override def noMatches() = {
@@ -53,9 +49,14 @@ object DefaultLoadHandler extends AudioLoadResultHandler {
         .build()
     ).queue()
     PlaylistManager.addRequest.addReaction("⁉").queue()
+    afterLoad()
+  }
+
+  def afterLoad(): Unit = {
     PlaylistManager.currentIdent = ""
     PlaylistManager.addRequest = null
     PlaylistManager.playOnFind = false
+    PlaylistManager.statusToFront()
   }
 
   object AutoSearchHandler extends AudioLoadResultHandler {
@@ -65,13 +66,11 @@ object DefaultLoadHandler extends AudioLoadResultHandler {
       val index = PlaylistManager.playlist.indices.last - 1
       PlaylistManager.addRequest.addReaction("✅").queue()
       PlaylistManager.addRequest.addReaction("\uD83D\uDD0E").queue() //magnifying glass
-      PlaylistManager.currentIdent = ""
-      PlaylistManager.addRequest = null
       if (PlaylistManager.playOnFind){
         PlaylistManager.curIndex = index
         PlaylistManager.startNextTrack()
-        PlaylistManager.playOnFind = false
       }
+      afterLoad()
     }
 
     override def playlistLoaded(playlist: AudioPlaylist) = {
@@ -81,9 +80,7 @@ object DefaultLoadHandler extends AudioLoadResultHandler {
     override def noMatches() = {
       PlaylistManager.addRequest.addReaction("❌").queue()
       PlaylistManager.addRequest.addReaction("❔").queue()
-      PlaylistManager.currentIdent = ""
-      PlaylistManager.addRequest = null
-      PlaylistManager.playOnFind = false
+      afterLoad()
     }
 
     override def loadFailed(exception: FriendlyException) = {
@@ -94,9 +91,7 @@ object DefaultLoadHandler extends AudioLoadResultHandler {
           .build()
       ).queue()
       PlaylistManager.addRequest.addReaction("⁉").queue()
-      PlaylistManager.currentIdent = ""
-      PlaylistManager.addRequest = null
-      PlaylistManager.playOnFind = false
+      afterLoad()
     }
 
   }

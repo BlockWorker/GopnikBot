@@ -13,18 +13,17 @@ import net.dv8tion.jda.core.{EmbedBuilder, MessageBuilder}
 import net.dv8tion.jda.core.entities.{Message, MessageEmbed}
 import net.dv8tion.jda.core.events.message.MessageReceivedEvent
 
-import scala.collection.convert.ImplicitConversions.`seq AsJavaList`
-import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.util.Random
 
 object PlaylistManager {
 
   val yt_regex = """(?:https?://)?(?:(?:www\.)?youtube\.com|youtu\.be)/(?:watch\?v=)?([A-Za-z0-9-_]{11})""".r
 
-  var playlist = mutable.MutableList[AudioTrack]()
+  var playlist = ListBuffer[AudioTrack]()
   var curIndex = -1
   var playMode: PlayMode = NoLoop
-  var statusMessage: Message = _
+  var statusMessage: Long = -1
 
   var currentIdent = ""
   var addRequest: Message = _
@@ -78,13 +77,12 @@ object PlaylistManager {
     playerManager.loadItem(ident, DefaultLoadHandler)
   }
 
-  def removeTracks(indices: Array[Int], message: Message): Unit = {
-    val ids = if (indices == null) Array(curIndex) else indices
-    if (!isConnected || ids.exists(i => !playlist.isDefinedAt(i))) { //fails if any index is outside of range
+  def removeTracks(id: Int, count: Int, message: Message): Unit = {
+    if (!isConnected || playlist.length < id + count) { //fails if any index is outside of range
       message.addReaction("❌").queue()
       return
     }
-    ids.foreach(i => playlist.remove(i))
+    playlist.remove(id, count)
     message.addReaction("✅").queue()
   }
 
@@ -119,28 +117,27 @@ object PlaylistManager {
 
   def sendStatusMessage(): Unit = {
     if (!isConnected) {
-      statusMessage = null
+      statusMessage = -1
       return
     }
-    if (statusMessage != null) statusMessage.delete().queue()
-    statusMessage = new MessageBuilder().setEmbed(createEmbed()).build()
-    getTextChannel.sendMessage(statusMessage).queue()
+    if (statusMessage >= 0) getTextChannel.getMessageById(statusMessage).queue(_.delete().queue())
+    getTextChannel.sendMessage(createEmbed()).queue(m => statusMessage = m.getIdLong)
   }
 
   def createEmbed(): MessageEmbed = {
     val builder = new EmbedBuilder() //basic embed frame
       .setAuthor("Gopnik Music Bot v1.0", null, BotMain.getAPI.getSelfUser.getAvatarUrl)
       .setColor(new Color(0, 200, 255))
-      .setFooter("ME ME BIG BOY", "http://p.fod4.com/p/channels/shack/profile/p8YTnc07RESVKAIW3qYO_adolf_hitler.jpg")
+      .setFooter("HALE HORTLER", "http://p.fod4.com/p/channels/shack/profile/p8YTnc07RESVKAIW3qYO_adolf_hitler.jpg")
       .setTimestamp(LocalDateTime.of(1938, 11, 9, 13, 37, 0, 0))
       .setThumbnail("https://steamuserimages-a.akamaihd.net/ugc/261591516980362979/03CECD0BCC55D26F772C3A99A492A8F1D3AE265B/")
 
     if (getTrack == null) {
-      builder.setTitle(":stop_button: Stopped").setDescription("Use " + prefix + "help for a list of commands.") //track stopped
+      builder.setTitle(":stop_button: `Stopped`").setDescription("Use " + prefix + "help for a list of commands.") //track stopped
     } else if (isPaused) {
-      builder.setTitle(":pause_button: Paused").setDescription("Use " + prefix + "resume to resume playback.") //track paused
+      builder.setTitle(":pause_button: `Paused`").setDescription("Use " + prefix + "resume to resume playback.") //track paused
     } else {
-      builder.setTitle(":arrow_forward: Playing").setDescription("Use " + prefix + "help for a list of commands.") //track playing
+      builder.setTitle(":arrow_forward: `Playing`").setDescription("Use " + prefix + "help for a list of commands.") //track playing
     }
 
     if (getTrack != null) {
@@ -148,47 +145,46 @@ object PlaylistManager {
       val pos = getTrack.getPosition
       val dur = getTrack.getDuration
       yt_regex.findFirstMatchIn(info.uri) match {
-        case Some(mtc) => builder.setImage("http://img.youtube.com/vi/" + mtc.group(1) + "/0.jpg") //add youtube thumbnail if youtube link
+        case Some(mtc) => builder.setThumbnail("http://img.youtube.com/vi/" + mtc.group(1) + "/0.jpg") //add youtube thumbnail if youtube link
         case _ =>
       }
-      builder.addField(":musical_note: Current Track", "[" + info.title + "](" + info.uri + ") (" + info.author + ")", false)
-        .addField("Position", formatTime(pos) + " / " + formatTime(dur), false) //add general track info and position
+      builder.addField(":musical_note: `Current Track`", "[" + info.title + "](" + info.uri + ") (" + info.author + "), " + formatTime(dur), false) //add general track info
     }
 
-    builder.addField(":loud_sound: Volume", getVolume + "%", true) //volume
+    builder.addField(":loud_sound: `Volume`", getVolume + "%", true) //volume
 
     playMode match {
-      case NoLoop => builder.addField(":arrows_clockwise: Playlist Mode", ":repeat_one: Play once", true) //play mode
-      case Loop => builder.addField(":arrows_clockwise: Playlist Mode", ":repeat: Loop", true)
-      case Shuffle => builder.addField(":arrows_clockwise: Playlist Mode", ":twisted_rightwards_arrows: Shuffle", true)
+      case NoLoop => builder.addField(":arrows_clockwise: `Playlist Mode`", ":repeat_one: Play once", true) //play mode
+      case Loop => builder.addField(":arrows_clockwise: `Playlist Mode`", ":repeat: Loop", true)
+      case Shuffle => builder.addField(":arrows_clockwise: `Playlist Mode`", ":twisted_rightwards_arrows: Shuffle", true)
     }
 
-    if (EventListener.locked) builder.addField(":lock: Locked", "This bot is currently locked.", true) //say that it's locked
+    if (EventListener.locked) builder.addField(":lock: `Locked`", "Bot is locked.", true) //say that it's locked
 
     if (playlist.length > curIndex + 1) {
       val next = playlist(curIndex + 1) //next track info
       val nextInfo = next.getInfo
-      builder.addField(":next_track: Next Track", "[" + nextInfo.title + "](" + nextInfo.uri + ") (" + nextInfo.author + "), " + formatTime(next.getDuration), false)
+      builder.addField(":next_track: `Next Track`", "[" + nextInfo.title + "](" + nextInfo.uri + ") (" + nextInfo.author + "), " + formatTime(next.getDuration), false)
     } else if (playlist.nonEmpty) playMode match {
-      case NoLoop => builder.addField(":next_track: Next Track", ":stop_button: End of Playlist", false) //end of playlist instead
+      case NoLoop => builder.addField(":next_track: `Next Track`", ":stop_button: End of Playlist", false) //end of playlist instead
       case _ => //start of playlist again (loop/shuffle)
         val next = playlist.head
         val nextInfo = next.getInfo
-        builder.addField(":next_track: Next Track", "[" + nextInfo.title + "](" + nextInfo.uri + ") (" + nextInfo.author + "), " + formatTime(next.getDuration), false)
-    } else builder.addField(":next_track: Next Track", ":eject: Playlist is empty!", false) //empty playlist instead
+        builder.addField(":next_track: `Next Track`", "[" + nextInfo.title + "](" + nextInfo.uri + ") (" + nextInfo.author + "), " + formatTime(next.getDuration), false)
+    } else builder.addField(":next_track: `Next Track`", ":eject: Playlist is empty!", false) //empty playlist instead
 
     builder.build()
   }
 
   def updateTrackInfo(): Unit = {
     val track = getTrack
-    if (track != null && statusMessage != null) {
-      statusMessage.editMessage(createEmbed()).queue()
+    if (track != null && statusMessage >= 0) {
+      getTextChannel.getMessageById(statusMessage).queue(_.editMessage(createEmbed()).queue())
     }
   }
 
   def statusToFront(): Unit = {
-    if (isConnected && statusMessage != null) sendStatusMessage()
+    if (isConnected && statusMessage >= 0) sendStatusMessage()
   }
 
   def onTrackError(player: AudioPlayer, track: AudioTrack, exception: FriendlyException): Unit = {
@@ -207,16 +203,16 @@ object PlaylistManager {
   }
 
   def onDisconnect(): Unit = {
-    if (statusMessage != null) statusMessage.delete().queue()
+    if (statusMessage >= 0) getTextChannel.getMessageById(statusMessage).queue(_.delete().queue())
     playlist.clear()
     curIndex = -1
     playMode = NoLoop
-    statusMessage = null
+    statusMessage = -1
   }
 
   def checkDisconnect(): Unit = {
     if (!isConnected) return
-    if (getChannel.getMembers.isEmpty) disconnect()
+    if (getChannel.getMembers.size() <= 1) disconnect()
   }
 
   def getPlayerStatus: String = {
@@ -226,7 +222,10 @@ object PlaylistManager {
     "Playing"
   }
 
-  def formatTime(time: Long): String = time / 60000 + ":" + (time / 1000) % 60
+  def formatTime(time: Long): String = {
+    if (time >= 3600000) "%d:%02d:%02d".format(time / 3600000, (time / 60000) % 60, (time / 1000) % 60)
+    else "%d:%02d".format(time / 60000, (time / 1000) % 60)
+  }
 
   sealed trait PlayMode
   case object NoLoop extends PlayMode
